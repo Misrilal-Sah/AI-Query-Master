@@ -34,7 +34,8 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = () => {
     // Redirect to backend Google OAuth endpoint
-    window.location.href = 'http://localhost:8000/api/auth/google'
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    window.location.href = `${apiBase}/api/auth/google`
   }
 
   const forgotPassword = async (email) => {
