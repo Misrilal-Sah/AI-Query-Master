@@ -42,14 +42,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"LLM initialization failed: {e}")
 
-    # Initialize Supabase
-    try:
-        from db.supabase_client import get_supabase_client
-        sb = get_supabase_client()
-        logger.info(f"Supabase: {'Connected' if sb.is_available else 'Not configured'}")
-    except Exception as e:
-        logger.warning(f"Supabase initialization: {e}")
-
     logger.info("=" * 60)
     logger.info("  AI Query Master - Ready!")
     logger.info("=" * 60)
@@ -84,21 +76,9 @@ app.add_middleware(
 # Include API routers
 from api.query_review import router as query_review_router
 from api.schema_review import router as schema_review_router
-from api.nl_to_query import router as nl_to_query_router
-from api.live_db import router as live_db_router
-from api.history import router as history_router
-from api.auth import router as auth_router
-from api.schema_builder import router as schema_builder_router
-from api.email_templates import router as email_templates_router
 
 app.include_router(query_review_router)
 app.include_router(schema_review_router)
-app.include_router(nl_to_query_router)
-app.include_router(live_db_router)
-app.include_router(history_router)
-app.include_router(auth_router)
-app.include_router(schema_builder_router)
-app.include_router(email_templates_router)
 
 
 @app.get("/")
@@ -117,11 +97,9 @@ async def health():
     """Detailed health check."""
     from agent.rag_pipeline import get_rag_pipeline
     from agent.llm_provider import get_llm_provider
-    from db.supabase_client import get_supabase_client
 
     rag = get_rag_pipeline()
     llm = get_llm_provider()
-    sb = get_supabase_client()
 
     return {
         "status": "healthy",
@@ -133,9 +111,6 @@ async def health():
             "llm_provider": {
                 "status": "ready",
                 "providers": [p["name"] for p in llm.providers],
-            },
-            "supabase": {
-                "status": "connected" if sb.is_available else "not_configured",
             },
         },
     }

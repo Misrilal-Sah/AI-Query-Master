@@ -6,7 +6,6 @@ import api from '../api'
 
 export default function QueryReview() {
   const [query, setQuery] = useState('')
-  const [dbType, setDbType] = useState('mysql')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -20,7 +19,7 @@ export default function QueryReview() {
     try {
       const response = await api.post('/review-query', {
         query: query.trim(),
-        db_type: dbType,
+        db_type: 'mysql',
       })
       setResult(response.data)
     } catch (err) {
@@ -31,11 +30,7 @@ export default function QueryReview() {
   }
 
   const handleExampleQuery = () => {
-    const examples = {
-      mysql: `SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE status = 'pending') ORDER BY created_at;`,
-      postgresql: `SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE status = 'pending') ORDER BY created_at;`,
-    }
-    setQuery(examples[dbType])
+    setQuery(`SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE status = 'pending') ORDER BY created_at;`)
   }
 
   return (
@@ -59,13 +54,13 @@ export default function QueryReview() {
               Load Example
             </button>
           </div>
-          <DatabaseSelector value={dbType} onChange={setDbType} />
+          <DatabaseSelector />
 
           <div className="form-group mt-4">
             <label className="form-label">SQL Query</label>
             <textarea
               className="textarea textarea-lg"
-              placeholder={`Enter your ${dbType === 'mysql' ? 'MySQL' : 'PostgreSQL'} query here...\n\nExample:\nSELECT * FROM users WHERE id IN (SELECT user_id FROM orders);`}
+              placeholder={`Enter your MySQL query here...\n\nExample:\nSELECT * FROM users WHERE id IN (SELECT user_id FROM orders);`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />

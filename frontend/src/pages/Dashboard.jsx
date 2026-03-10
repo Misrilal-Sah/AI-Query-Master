@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { HiOutlineCode, HiOutlineDatabase, HiOutlineChatAlt2, HiOutlineServer, HiOutlineLightningBolt, HiOutlineShieldCheck, HiOutlineChartBar, HiOutlinePhotograph } from 'react-icons/hi'
+import { HiOutlineCode, HiOutlineDatabase, HiOutlineLightningBolt, HiOutlineShieldCheck, HiOutlineChartBar } from 'react-icons/hi'
 import './Dashboard.css'
 
 const features = [
@@ -16,27 +16,6 @@ const features = [
     title: 'Schema Review',
     description: 'Evaluate database schema design and suggest improvements',
     gradient: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
-  },
-  {
-    path: '/schema-builder',
-    icon: HiOutlinePhotograph,
-    title: 'Schema Builder',
-    description: 'Upload a diagram image and generate SQL DDL automatically',
-    gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-  },
-  {
-    path: '/nl-to-query',
-    icon: HiOutlineChatAlt2,
-    title: 'NL to Query',
-    description: 'Convert natural language descriptions into optimized SQL queries',
-    gradient: 'linear-gradient(135deg, #10b981, #06b6d4)',
-  },
-  {
-    path: '/live-db',
-    icon: HiOutlineServer,
-    title: 'Live Database',
-    description: 'Connect to a database and analyze real schemas with EXPLAIN plans',
-    gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
   },
 ]
 

@@ -1,0 +1,100 @@
+%%{init: {'theme': 'dark'}}%%
+graph TB
+    subgraph Frontend["Frontend (React + Vite)"]
+        APP["App.jsx<br/>Routing & Layout"]
+        SIDE["Sidebar.jsx<br/>Navigation"]
+        DASH["Dashboard.jsx<br/>Feature Cards"]
+        QR["QueryReview.jsx<br/>Query Input & Results"]
+        SR["SchemaReview.jsx<br/>Schema Input & Results"]
+        DBSEL["DatabaseSelector.jsx<br/>MySQL"]
+        RESULT["ResultPanel.jsx<br/>Scores, Steps, Analysis"]
+        THEME["ThemeContext.jsx<br/>Dark / Light Mode"]
+        API_CLIENT["api.js<br/>Axios HTTP Client"]
+    end
+
+    subgraph Backend["Backend (FastAPI)"]
+        MAIN["main.py<br/>App Entry Point & CORS"]
+
+        subgraph API_LAYER["API Layer"]
+            QR_API["/api/review-query<br/>query_review.py"]
+            SR_API["/api/review-schema<br/>schema_review.py"]
+        end
+
+        subgraph AGENT["AI Agent"]
+            AGENT_CORE["agent.py<br/>Orchestrator"]
+            LLM["llm_provider.py<br/>Multi-LLM Fallback"]
+            RAG["rag_pipeline.py<br/>RAG Search & Index"]
+            TOOLS["tools.py<br/>Static Analysis"]
+            REFLECT["reflection.py<br/>Self-Reflection"]
+            EVAL["evaluator.py<br/>Scoring Engine"]
+        end
+
+        HELPERS["helpers.py<br/>Utility Functions"]
+    end
+
+    subgraph External["External Services"]
+        GEMINI["Gemini API"]
+        GROQ["Groq API"]
+        OPENROUTER["OpenRouter API"]
+        CHROMA["ChromaDB<br/>Vector Store"]
+    end
+
+    subgraph Knowledge["Knowledge Base"]
+        MYSQL_KB["RAG_Knowledge/Mysql/"]
+    end
+
+    %% Frontend connections
+    APP --> SIDE
+    APP --> DASH
+    APP --> QR
+    APP --> SR
+    QR --> DBSEL
+    QR --> RESULT
+    QR --> API_CLIENT
+    SR --> DBSEL
+    SR --> RESULT
+    SR --> API_CLIENT
+    SIDE --> THEME
+
+    %% Frontend to Backend
+    API_CLIENT -->|"POST /api/review-query"| QR_API
+    API_CLIENT -->|"POST /api/review-schema"| SR_API
+
+    %% Backend routing
+    MAIN --> QR_API
+    MAIN --> SR_API
+
+    %% API to Agent
+    QR_API --> AGENT_CORE
+    SR_API --> AGENT_CORE
+
+    %% Agent internals
+    AGENT_CORE --> TOOLS
+    AGENT_CORE --> RAG
+    AGENT_CORE --> LLM
+    AGENT_CORE --> REFLECT
+    AGENT_CORE --> EVAL
+    REFLECT --> LLM
+    EVAL --> LLM
+
+    %% External services
+    LLM -->|"Priority 1"| GEMINI
+    LLM -->|"Priority 2"| GROQ
+    LLM -->|"Priority 3"| OPENROUTER
+    RAG --> CHROMA
+
+    %% Knowledge base
+    RAG -->|"Index"| MYSQL_KB
+
+    %% Styling
+    classDef frontend fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    classDef backend fill:#1e3a2f,stroke:#10b981,color:#fff
+    classDef agent fill:#3a1e5f,stroke:#8b5cf6,color:#fff
+    classDef external fill:#5f3a1e,stroke:#f59e0b,color:#fff
+    classDef knowledge fill:#1e5f5f,stroke:#06b6d4,color:#fff
+
+    class APP,SIDE,DASH,QR,SR,DBSEL,RESULT,THEME,API_CLIENT frontend
+    class MAIN,QR_API,SR_API,HELPERS backend
+    class AGENT_CORE,LLM,RAG,TOOLS,REFLECT,EVAL agent
+    class GEMINI,GROQ,OPENROUTER,CHROMA external
+    class MYSQL_KB knowledge

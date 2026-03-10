@@ -6,7 +6,6 @@ import api from '../api'
 
 export default function SchemaReview() {
   const [schema, setSchema] = useState('')
-  const [dbType, setDbType] = useState('mysql')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -20,7 +19,7 @@ export default function SchemaReview() {
     try {
       const response = await api.post('/review-schema', {
         schema: schema.trim(),
-        db_type: dbType,
+        db_type: 'mysql',
       })
       setResult(response.data)
     } catch (err) {
@@ -31,8 +30,7 @@ export default function SchemaReview() {
   }
 
   const handleExample = () => {
-    const examples = {
-      mysql: `CREATE TABLE users (
+    setSchema(`CREATE TABLE users (
   id INT,
   name TEXT,
   email TEXT,
@@ -46,24 +44,7 @@ CREATE TABLE orders (
   amount FLOAT,
   product TEXT,
   date TEXT
-);`,
-      postgresql: `CREATE TABLE users (
-  id INTEGER,
-  name TEXT,
-  email TEXT,
-  password TEXT,
-  status TEXT
-);
-
-CREATE TABLE orders (
-  id INTEGER,
-  user_id INTEGER,
-  amount NUMERIC,
-  product TEXT,
-  created_date TEXT
-);`,
-    }
-    setSchema(examples[dbType])
+);`)
   }
 
   return (
@@ -86,7 +67,7 @@ CREATE TABLE orders (
               Load Example
             </button>
           </div>
-          <DatabaseSelector value={dbType} onChange={setDbType} />
+          <DatabaseSelector />
 
           <div className="form-group mt-4">
             <label className="form-label">Schema DDL</label>
