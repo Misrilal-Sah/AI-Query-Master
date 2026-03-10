@@ -30,9 +30,15 @@ async def lifespan(app: FastAPI):
     logger.info("  AI Query Master - Starting Up")
     logger.info("=" * 60)
 
-    # Skip RAG pipeline initialization at startup (lazy-load on first request)
-    # This avoids exceeding memory limits on free-tier hosting (Render 512MB)
-    logger.info("RAG Pipeline: will initialize on first request (lazy mode)")
+    # Initialize RAG pipeline
+    try:
+        from agent.rag_pipeline import get_rag_pipeline
+        rag = get_rag_pipeline()
+        rag.initialize()
+        stats = rag.get_stats()
+        logger.info(f"RAG Pipeline: {stats['total_chunks']} chunks indexed")
+    except Exception as e:
+        logger.error(f"RAG initialization failed: {e}")
 
     # Initialize LLM provider
     try:
@@ -69,13 +75,9 @@ app = FastAPI(
 )
 
 # CORS configuration
-cors_origins_env = os.getenv("CORS_ORIGINS", "")
-cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] if cors_origins_env else []
-cors_origins += ["http://localhost:5173", "http://localhost:3000"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

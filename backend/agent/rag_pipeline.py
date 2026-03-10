@@ -20,43 +20,38 @@ class RAGPipeline:
         self.collection = None
         self.embedder = None
         self._initialized = False
-        self._init_failed = False
 
     def initialize(self):
         """Initialize the RAG pipeline (load embedder and ChromaDB)."""
-        if self._initialized or self._init_failed:
+        if self._initialized:
             return
 
         logger.info("Initializing RAG pipeline...")
 
-        try:
-            # Initialize embedder
-            from sentence_transformers import SentenceTransformer
-            self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        # Initialize embedder
+        from sentence_transformers import SentenceTransformer
+        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-            # Initialize ChromaDB
-            import chromadb
-            from chromadb.config import Settings
+        # Initialize ChromaDB
+        import chromadb
+        from chromadb.config import Settings
 
-            client = chromadb.PersistentClient(path=self.chroma_dir)
+        client = chromadb.PersistentClient(path=self.chroma_dir)
 
-            # Get or create collection
-            self.collection = client.get_or_create_collection(
-                name="query_master_knowledge",
-                metadata={"hnsw:space": "cosine"}
-            )
+        # Get or create collection
+        self.collection = client.get_or_create_collection(
+            name="query_master_knowledge",
+            metadata={"hnsw:space": "cosine"}
+        )
 
-            existing_count = self.collection.count()
-            logger.info(f"ChromaDB initialized. Existing chunks: {existing_count}")
+        existing_count = self.collection.count()
+        logger.info(f"ChromaDB initialized. Existing chunks: {existing_count}")
 
-            # Index if empty
-            if existing_count == 0:
-                self.index_knowledge_base()
+        # Index if empty
+        if existing_count == 0:
+            self.index_knowledge_base()
 
-            self._initialized = True
-        except Exception as e:
-            logger.warning(f"RAG pipeline initialization failed (will work without RAG): {e}")
-            self._init_failed = True
+        self._initialized = True
 
     def index_knowledge_base(self):
         """Index all documents from the knowledge directory."""
@@ -253,10 +248,6 @@ class RAGPipeline:
         if not self._initialized:
             self.initialize()
 
-        if self._init_failed or not self.embedder:
-            logger.info("RAG not available, returning empty results")
-            return []
-
         # Generate query embedding
         query_embedding = self.embedder.encode([query]).tolist()
 
@@ -322,14 +313,6 @@ class RAGPipeline:
         """Get knowledge base statistics."""
         if not self._initialized:
             self.initialize()
-
-        if self._init_failed or not self.collection:
-            return {
-                "total_chunks": 0,
-                "knowledge_dir": str(Path(self.knowledge_dir).resolve()),
-                "chroma_dir": str(Path(self.chroma_dir).resolve()),
-                "status": "unavailable",
-            }
 
         count = self.collection.count()
         return {
