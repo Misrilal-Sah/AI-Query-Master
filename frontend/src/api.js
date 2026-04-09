@@ -1,7 +1,14 @@
 import axios from 'axios'
 
+const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const normalizedApiBaseUrl = rawApiBaseUrl ? rawApiBaseUrl.replace(/\/+$/, '') : ''
+const defaultApiBaseUrl = import.meta.env.DEV ? 'http://localhost:8000/api' : '/api'
+
+export const API_BASE_URL = normalizedApiBaseUrl || defaultApiBaseUrl
+export const GOOGLE_AUTH_URL = `${API_BASE_URL.replace(/\/api\/?$/, '')}/api/auth/google`
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   timeout: 300000, // 5 minutes for large DB analysis
   headers: {
     'Content-Type': 'application/json',

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import api from '../api'
+import api, { GOOGLE_AUTH_URL } from '../api'
 
 const AuthContext = createContext()
 
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = () => {
     // Redirect to backend Google OAuth endpoint
-    window.location.href = 'http://localhost:8000/api/auth/google'
+    window.location.href = GOOGLE_AUTH_URL
   }
 
   const forgotPassword = async (email) => {
