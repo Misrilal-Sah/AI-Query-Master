@@ -5,7 +5,7 @@ Coordinates tools, RAG, LLM, reflection, and evaluation for all features.
 import json
 import logging
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 from agent.llm_provider import get_llm_provider
 from agent.rag_pipeline import get_rag_pipeline
@@ -160,6 +160,36 @@ class QueryAgent:
         self.reflector = SelfReflector(self.llm)
         self.evaluator = QueryEvaluator(self.llm)
 
+    def _retrieve_rag_context(
+        self,
+        query: str,
+        db_type: str,
+        k: int = 5,
+        include_relevance: bool = True,
+    ) -> Tuple[List[Dict[str, Any]], str]:
+        """Retrieve RAG chunks safely; return empty context if disabled/unavailable."""
+        try:
+            rag_results = self.rag.search(query, db_type=db_type, k=k) or []
+        except Exception as e:
+            logger.warning(f"RAG search skipped: {e}")
+            rag_results = []
+
+        if not rag_results:
+            return [], "No additional knowledge base context available."
+
+        if include_relevance:
+            rag_context = "\n\n".join([
+                f"[{r['source']}] (relevance: {r['score']:.2f})\n{r['text']}"
+                for r in rag_results
+            ])
+        else:
+            rag_context = "\n\n".join([
+                f"[{r['source']}]\n{r['text']}"
+                for r in rag_results
+            ])
+
+        return rag_results, rag_context
+
     async def review_query(self, query: str, db_type: str = "mysql") -> Dict[str, Any]:
         """
         Feature 1: Query Review & Optimization
@@ -176,18 +206,18 @@ class QueryAgent:
 
         # Step 2: RAG Retrieval
         steps.append({"step": 2, "action": "Knowledge Base Search", "status": "running"})
-        rag_results = self.rag.search(
+        rag_results, rag_context = self._retrieve_rag_context(
             f"SQL query optimization best practices {db_type} "
             f"{'performance issues' if static_result['total_issues'] > 0 else 'query review'}",
             db_type=db_type,
             k=5,
+            include_relevance=True,
         )
-        rag_context = "\n\n".join([
-            f"[{r['source']}] (relevance: {r['score']:.2f})\n{r['text']}"
-            for r in rag_results
-        ])
         steps[-1]["status"] = "done"
-        steps[-1]["result"] = f"Retrieved {len(rag_results)} knowledge chunks"
+        steps[-1]["result"] = (
+            f"Retrieved {len(rag_results)} knowledge chunks"
+            if rag_results else "RAG unavailable; continuing without knowledge chunks"
+        )
 
         # Step 3: Index Recommendations (Tool Call)
         steps.append({"step": 3, "action": "Index Analysis", "status": "running"})
@@ -273,17 +303,17 @@ class QueryAgent:
 
         # Step 2: RAG Retrieval
         steps.append({"step": 2, "action": "Knowledge Base Search", "status": "running"})
-        rag_results = self.rag.search(
+        rag_results, rag_context = self._retrieve_rag_context(
             f"database schema design best practices {db_type} normalization indexing",
             db_type=db_type,
             k=5,
+            include_relevance=True,
         )
-        rag_context = "\n\n".join([
-            f"[{r['source']}] (relevance: {r['score']:.2f})\n{r['text']}"
-            for r in rag_results
-        ])
         steps[-1]["status"] = "done"
-        steps[-1]["result"] = f"Retrieved {len(rag_results)} knowledge chunks"
+        steps[-1]["result"] = (
+            f"Retrieved {len(rag_results)} knowledge chunks"
+            if rag_results else "RAG unavailable; continuing without knowledge chunks"
+        )
 
         # Step 3: LLM Analysis
         steps.append({"step": 3, "action": "AI Analysis", "status": "running"})
@@ -354,17 +384,17 @@ class QueryAgent:
 
         # Step 1: RAG Retrieval
         steps.append({"step": 1, "action": "Knowledge Base Search", "status": "running"})
-        rag_results = self.rag.search(
+        rag_results, rag_context = self._retrieve_rag_context(
             f"{db_type} query syntax examples for: {description}",
             db_type=db_type,
             k=5,
+            include_relevance=False,
         )
-        rag_context = "\n\n".join([
-            f"[{r['source']}]\n{r['text']}"
-            for r in rag_results
-        ])
         steps[-1]["status"] = "done"
-        steps[-1]["result"] = f"Retrieved {len(rag_results)} knowledge chunks"
+        steps[-1]["result"] = (
+            f"Retrieved {len(rag_results)} knowledge chunks"
+            if rag_results else "RAG unavailable; continuing without knowledge chunks"
+        )
 
         # Step 2: LLM Query Generation
         steps.append({"step": 2, "action": "Query Generation", "status": "running"})
@@ -433,17 +463,17 @@ class QueryAgent:
 
         # Step 1: RAG Retrieval
         steps.append({"step": 1, "action": "Knowledge Base Search", "status": "running"})
-        rag_results = self.rag.search(
+        rag_results, rag_context = self._retrieve_rag_context(
             f"{db_type} database optimization schema analysis performance tuning",
             db_type=db_type,
             k=5,
+            include_relevance=False,
         )
-        rag_context = "\n\n".join([
-            f"[{r['source']}]\n{r['text']}"
-            for r in rag_results
-        ])
         steps[-1]["status"] = "done"
-        steps[-1]["result"] = f"Retrieved {len(rag_results)} knowledge chunks"
+        steps[-1]["result"] = (
+            f"Retrieved {len(rag_results)} knowledge chunks"
+            if rag_results else "RAG unavailable; continuing without knowledge chunks"
+        )
 
         # Step 2: Query analysis if provided
         static_result = None

@@ -25,7 +25,7 @@
 
 <br/>
 
-[🚀 Quick Start](#-quick-start) · [✨ Features](#-features) · [🏗️ Architecture](#️-system-architecture) · [🤖 AI Pipeline](#-ai-agent-pipeline) · [🛠️ Tech Stack](#️-tech-stack)
+[🚀 Quick Start](#-quick-start) · [☁️ Deploy](#deploy-render--supabase-pgvector) · [✨ Features](#-features) · [🏗️ Architecture](#️-system-architecture) · [🤖 AI Pipeline](#-ai-agent-pipeline) · [🛠️ Tech Stack](#️-tech-stack)
 
 </div>
 
@@ -212,7 +212,7 @@ OPENROUTER_KEY_2=your_openrouter_key_optional   # optional second key
 
 # ── Supabase (Auth + History storage) ─────────────────
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_KEY=your_supabase_service_role_key
 ```
 
 ### Step 3 — Setup Supabase
@@ -252,6 +252,43 @@ npm run dev
 
 ---
 
+## Deploy: Render + Supabase pgvector
+
+Use this production setup to avoid Render free-tier memory issues from local embedding models.
+
+1. Create a new Supabase project and run [`migration.sql`](migration.sql) in SQL Editor.
+2. Create a Render Web Service for backend:
+   - Root Directory: `backend`
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. Set backend environment variables in Render:
+
+```env
+# App
+FRONTEND_URL=https://your-frontend.vercel.app
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_service_role_key
+
+# LLMs
+GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
+OPENROUTER_KEY_1=your_openrouter_key
+
+# RAG (Supabase pgvector)
+RAG_ENABLED=true
+RAG_BACKEND=supabase
+RAG_EMBEDDING_PROVIDER=gemini
+RAG_EMBEDDING_DIM=384
+RAG_PRELOAD_ON_STARTUP=false
+RAG_AUTO_INDEX=false
+```
+
+4. Deploy backend, then call `POST /api/index` once to build embeddings and vectors.
+5. Verify `GET /api/health` shows `rag_pipeline.backend = supabase` and non-zero chunks.
+6. Ensure frontend points to your Render backend API URL (replace localhost in `frontend/src/api.js` for production).
+
+---
+
 ## 🛠️ Tech Stack
 
 <div align="center">
@@ -261,7 +298,7 @@ npm run dev
 | **Frontend** | React 18 + Vite + React Router | SPA with fast HMR dev experience |
 | **Backend** | FastAPI + Python 3.12 | Async REST API with auto-docs |
 | **AI / LLM** | Gemini · Groq · OpenRouter | Multi-provider fallback inference |
-| **RAG** | ChromaDB · LangChain · SentenceTransformers | Vector search over knowledge base |
+| **RAG** | ChromaDB or Supabase pgvector · LangChain · Gemini Embeddings | Persistent vector search over knowledge base |
 | **Auth & Storage** | Supabase | Auth, user management, history DB |
 | **Live Database** | PyMySQL · Psycopg2 | Read-only live DB connections |
 
@@ -280,7 +317,7 @@ AI Query Master/
 │   ├── 📂 agent/
 │   │   ├── agent.py             ← Agentic orchestration loop
 │   │   ├── llm_provider.py      ← Multi-LLM fallback chain
-│   │   ├── rag_pipeline.py      ← ChromaDB RAG retrieval
+│   │   ├── rag_pipeline.py      ← ChromaDB/Supabase pgvector RAG retrieval
 │   │   ├── tools.py             ← Specialized analysis tools
 │   │   ├── reflection.py        ← Self-reflection module
 │   │   └── evaluator.py         ← Scoring: Perf/Sec/Read/Complex
@@ -319,7 +356,7 @@ AI Query Master/
 - **Live DB connections** are strictly **read-only** and **session-scoped** — no write operations, no persistent credentials stored
 - All API keys are loaded from environment variables — never hardcoded
 - Authentication handled by Supabase with JWT tokens
-- RAG knowledge base is local — no user query data sent to vector DB providers
+- RAG supports local (ChromaDB) or hosted (Supabase pgvector) storage for indexed chunks
 
 ---
 

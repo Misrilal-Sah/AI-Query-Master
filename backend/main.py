@@ -23,6 +23,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    """Parse boolean-like environment variables."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: initialize on startup, cleanup on shutdown."""
@@ -30,15 +38,22 @@ async def lifespan(app: FastAPI):
     logger.info("  AI Query Master - Starting Up")
     logger.info("=" * 60)
 
-    # Initialize RAG pipeline
-    try:
-        from agent.rag_pipeline import get_rag_pipeline
-        rag = get_rag_pipeline()
-        rag.initialize()
-        stats = rag.get_stats()
-        logger.info(f"RAG Pipeline: {stats['total_chunks']} chunks indexed")
-    except Exception as e:
-        logger.error(f"RAG initialization failed: {e}")
+    # Initialize RAG pipeline (optional on startup to avoid OOM on low-memory instances)
+    rag_enabled = _env_flag("RAG_ENABLED", not bool(os.getenv("RENDER")))
+    rag_preload = _env_flag("RAG_PRELOAD_ON_STARTUP", False)
+    if rag_enabled and rag_preload:
+        try:
+            from agent.rag_pipeline import get_rag_pipeline
+            rag = get_rag_pipeline()
+            rag.initialize()
+            stats = rag.get_stats()
+            logger.info(f"RAG Pipeline: {stats['total_chunks']} chunks indexed")
+        except Exception as e:
+            logger.error(f"RAG initialization failed: {e}")
+    elif not rag_enabled:
+        logger.info("RAG Pipeline: disabled (RAG_ENABLED=false)")
+    else:
+        logger.info("RAG Pipeline: deferred (RAG_PRELOAD_ON_STARTUP=false)")
 
     # Initialize LLM provider
     try:
@@ -125,12 +140,20 @@ async def health():
     llm = get_llm_provider()
     sb = get_supabase_client()
 
+    rag_stats = rag.get_stats()
+    rag_enabled = rag_stats.get("enabled", False)
+    rag_status = "disabled"
+    if rag_enabled:
+        rag_status = "ready" if rag_stats.get("initialized") else "not_initialized"
+
     return {
         "status": "healthy",
         "components": {
             "rag_pipeline": {
-                "status": "ready" if rag._initialized else "not_initialized",
-                "chunks": rag.collection.count() if rag._initialized else 0,
+                "status": rag_status,
+                "chunks": rag_stats.get("total_chunks", 0),
+                "backend": rag_stats.get("backend", "unknown"),
+                "embedding_provider": rag_stats.get("embedding_provider", "unknown"),
             },
             "llm_provider": {
                 "status": "ready",
@@ -150,25 +173,25 @@ async def reindex_knowledge_base():
 
     rag = get_rag_pipeline()
 
-    # Clear existing
-    import chromadb
-    client = chromadb.PersistentClient(path=rag.chroma_dir)
-    try:
-        client.delete_collection("query_master_knowledge")
-    except Exception:
-        pass
+    if not getattr(rag, "enabled", True):
+        return {
+            "success": False,
+            "message": "RAG is disabled (RAG_ENABLED=false)",
+            "total_chunks": 0,
+        }
 
-    rag.collection = client.get_or_create_collection(
-        name="query_master_knowledge",
-        metadata={"hnsw:space": "cosine"}
-    )
+    # Clear and rebuild active backend index
+    rag.reset_index()
 
     count = rag.index_knowledge_base()
+    stats = rag.get_stats()
 
     return {
         "success": True,
         "message": f"Indexed {count} chunks",
         "total_chunks": count,
+        "backend": stats.get("backend", "unknown"),
+        "embedding_provider": stats.get("embedding_provider", "unknown"),
     }
 
 
