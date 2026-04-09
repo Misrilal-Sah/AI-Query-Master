@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+
+def _get_frontend_url() -> str:
+    """Return normalized frontend URL without trailing slash."""
+    return os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
 # Lazy Supabase client
 def _get_supabase():
     from db.supabase_client import get_supabase_client
@@ -42,7 +47,7 @@ async def signup(request: SignupRequest):
     """Register a new user with email and password."""
     try:
         supabase = _get_supabase()
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        frontend_url = _get_frontend_url()
         result = supabase.auth.sign_up({
             "email": request.email,
             "password": request.password,
@@ -115,7 +120,7 @@ async def google_auth():
     """Redirect to Google OAuth via Supabase."""
     try:
         supabase = _get_supabase()
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        frontend_url = _get_frontend_url()
 
         result = supabase.auth.sign_in_with_oauth({
             "provider": "google",
@@ -144,7 +149,7 @@ async def forgot_password(request: ForgotPasswordRequest):
         supabase.auth.reset_password_email(
             request.email,
             options={
-                "redirect_to": os.getenv("FRONTEND_URL", "http://localhost:5173") + "/reset-password",
+                "redirect_to": _get_frontend_url() + "/reset-password",
             },
         )
 
