@@ -3,6 +3,10 @@
     {
       "source": "/api/(.*)",
       "destination": "https://ai-query-master.onrender.com/api/$1"
+    },
+    {
+      "source": "/((?!api/|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }

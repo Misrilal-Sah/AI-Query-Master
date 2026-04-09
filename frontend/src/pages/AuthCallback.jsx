@@ -2,6 +2,18 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api'
 
+function decodeJwtPayload(token) {
+  const parts = token.split('.')
+  if (parts.length < 2) {
+    throw new Error('Invalid token format')
+  }
+
+  const base64Url = parts[1]
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4)
+  return JSON.parse(atob(base64 + padding))
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -56,7 +68,7 @@ export default function AuthCallback() {
       const accessToken = hashParams.get('access_token')
       if (accessToken) {
         try {
-          const payload = JSON.parse(atob(accessToken.split('.')[1]))
+          const payload = decodeJwtPayload(accessToken)
           const user = {
             id: payload.sub,
             email: payload.email,
